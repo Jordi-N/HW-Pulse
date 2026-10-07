@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- La ventana a pantalla completa. Lee de HwPulse.Sensors y solo decide cómo se pinta.
+
+       Sin MSIX y con los runtimes dentro (.NET y Windows App SDK): se copia la carpeta publicada
+       a un servidor o PC y arranca sin instalar nada más que PawnIO. -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>HwPulse.App</RootNamespace>
+    <AssemblyName>HwPulse</AssemblyName>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+
+    <!-- Aunque no haya MSIX: es lo que mete HwPulse.pri (con el XAML compilado dentro) en la carpeta
+         publicada. Sin él la aplicación arranca y se cierra al abrir la ventana. -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+
+    <!-- Lo piden los generadores de C#/WinRT (las listas que van a ItemsSource) y de LibraryImport.
+         No hay bloques unsafe escritos a mano. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260710003" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HwPulse.Sensors\HwPulse.Sensors.csproj" />
+  </ItemGroup>
+
+</Project>

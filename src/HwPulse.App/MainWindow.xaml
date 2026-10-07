@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La colocación copia el SensorPanel de AIDA64. Se diseña a 1280×400, el tamaño de la pantalla
+     auxiliar, y el Viewbox lo escala a cualquier otra conservando la proporción. -->
+<Window
+    x:Class="HwPulse.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:HwPulse.App"
+    xmlns:controls="using:HwPulse.App.Controls"
+    Title="HW Pulse">
+
+    <Window.SystemBackdrop>
+        <local:PinnedAcrylicBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid>
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="Escape" Invoked="OnEscape" />
+        </Grid.KeyboardAccelerators>
+
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1280" Height="400" Padding="12" ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="315*" />
+                    <ColumnDefinition Width="400*" />
+                    <ColumnDefinition Width="400*" />
+                    <ColumnDefinition Width="400*" />
+                    <ColumnDefinition Width="315*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Sistema -->
+                <Border Style="{StaticResource PulseCard}">
+                    <Grid RowSpacing="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="120" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="SISTEMA" Style="{StaticResource PulseCardTitle}" />
+                        <Grid Grid.Row="1" Margin="0,22,0,0">
+                            <TextBlock Text="USO DE RAM" Style="{StaticResource PulseLabel}" />
+                            <TextBlock x:Name="RamPercent" HorizontalAlignment="Right" Text="—" Style="{StaticResource PulseValue}" />
+                        </Grid>
+                        <controls:Sparkline x:Name="RamGraph" Grid.Row="2" />
+                    </Grid>
+                </Border>
+
+                <!-- CPU -->
+                <Border Grid.Column="1" Style="{StaticResource PulseCard}">
+                    <Grid RowSpacing="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="CpuName" Text="CPU" Style="{StaticResource PulseCardTitle}" />
+                        <controls:TemperatureRing x:Name="CpuRing" Grid.Row="1" Width="122" Height="122" Margin="0,4,0,0" />
+                        <Grid Grid.Row="2" Margin="0,6,0,0">
+                            <TextBlock Text="USO DE CPU" Style="{StaticResource PulseLabel}" />
+                            <TextBlock x:Name="CpuLoad" HorizontalAlignment="Right" Text="—" Style="{StaticResource PulseValue}" />
+                        </Grid>
+                        <controls:Sparkline x:Name="CpuGraph" Grid.Row="3" />
+                        <Grid Grid.Row="4" Margin="0,4,0,0">
+                            <TextBlock Text="RELOJ" Style="{StaticResource PulseLabel}" />
+                            <TextBlock x:Name="CpuClock" HorizontalAlignment="Right" Text="—" Style="{StaticResource PulseValue}" />
+                        </Grid>
+                        <controls:Meter x:Name="CpuClockMeter" Grid.Row="5" Height="10" />
+                    </Grid>
+                </Border>
+
+                <!-- Discos -->
+                <Border Grid.Column="2" Style="{StaticResource PulseCard}">
+                    <Grid RowSpacing="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="DISCOS" Style="{StaticResource PulseCardTitle}" />
+                        <ItemsControl x:Name="Disks" Grid.Row="1">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="12" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:DiskRow">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock HorizontalAlignment="Center" Text="{x:Bind Title}" Style="{StaticResource PulseLabel}" />
+                                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="48">
+                                            <controls:TemperatureRing Width="{x:Bind RingSize}" Height="{x:Bind RingSize}" Celsius="{x:Bind Celsius}" />
+                                            <StackPanel VerticalAlignment="Bottom" Spacing="6">
+                                                <controls:Meter Width="20" Height="{x:Bind RingSize}" Orientation="Vertical" Fraction="{x:Bind UsedFraction}" HorizontalAlignment="Center" />
+                                                <TextBlock HorizontalAlignment="Center" Text="{x:Bind Used}" Style="{StaticResource PulseValue}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
+
+                <!-- GPU -->
+                <Border Grid.Column="3" Style="{StaticResource PulseCard}">
+                    <Grid RowSpacing="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="GpuName" Text="GPU" Style="{StaticResource PulseCardTitle}" />
+                        <controls:TemperatureRing x:Name="GpuRing" Grid.Row="1" Width="160" Height="160" />
+                        <Grid Grid.Row="2">
+                            <TextBlock Text="USO" Style="{StaticResource PulseLabel}" />
+                            <TextBlock x:Name="GpuLoad" HorizontalAlignment="Right" Text="—" Style="{StaticResource PulseValue}" />
+                        </Grid>
+                        <controls:Meter x:Name="GpuLoadMeter" Grid.Row="3" Height="10" />
+                        <Grid Grid.Row="4" Margin="0,10,0,0">
+                            <TextBlock Text="RELOJ" Style="{StaticResource PulseLabel}" />
+                            <TextBlock x:Name="GpuClock" HorizontalAlignment="Right" Text="—" Style="{StaticResource PulseValue}" />
+                        </Grid>
+                        <controls:Meter x:Name="GpuClockMeter" Grid.Row="5" Height="10" />
+                    </Grid>
+                </Border>
+
+                <!-- Ventiladores -->
+                <Border Grid.Column="4" Style="{StaticResource PulseCard}">
+                    <Grid RowSpacing="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="VENTILADORES" Style="{StaticResource PulseCardTitle}" />
+                        <ItemsControl x:Name="Fans" Grid.Row="1" Margin="0,14,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="26" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:FanRow">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="72" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock HorizontalAlignment="Center" Text="{x:Bind Label}" Style="{StaticResource PulseLabel}" />
+                                            <TextBlock HorizontalAlignment="Center" Text="{x:Bind Rpm}" Style="{StaticResource PulseCaption}" />
+                                        </StackPanel>
+                                        <controls:Meter Grid.Column="1" Height="30" Fraction="{x:Bind Fraction}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Viewbox>
+
+        <InfoBar
+            x:Name="Notice"
+            Margin="0,0,0,16"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            IsClosable="False" />
+    </Grid>
+</Window>

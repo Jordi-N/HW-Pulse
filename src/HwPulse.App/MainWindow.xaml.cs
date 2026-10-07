@@ -1,0 +1,146 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using HwPulse.Sensors;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Windows.Graphics;
+
+namespace HwPulse.App;
+
+public sealed partial class MainWindow : Window
+{
+    private const int HistoryLength = 60;
+
+    // Pantalla y sistema despiertos mientras el proceso viva: es un panel que se mira, no se toca.
+    private const uint EsContinuous = 0x80000000;
+    private const uint EsSystemRequired = 0x00000001;
+    private const uint EsDisplayRequired = 0x00000002;
+
+    private static readonly string SettingsPath = Path.Combine(AppContext.BaseDirectory, "settings.json");
+
+    private readonly History ramHistory = new(HistoryLength);
+    private readonly History cpuHistory = new(HistoryLength);
+    private readonly Task readLoop;
+
+    // Lo levanta el cierre de la ventana; el bucle de lectura termina en su siguiente vuelta.
+    private volatile bool closed;
+
+    // Ningún sensor da el reloj máximo: las barras de reloj se miden contra el mayor visto.
+    private float cpuClockMax;
+    private float gpuClockMax;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        RamGraph.Capacity = HistoryLength;
+        CpuGraph.Capacity = HistoryLength;
+        PlaceOnAuxiliaryDisplay();
+
+        if (SetThreadExecutionState(EsContinuous | EsSystemRequired | EsDisplayRequired) == 0)
+        {
+            throw new Win32Exception();
+        }
+
+        readLoop = Task.Run(ReadLoopAsync);
+        Closed += (_, _) =>
+        {
+            closed = true;
+            readLoop.Wait();
+        };
+    }
+
+    [LibraryImport("kernel32.dll")]
+    private static partial uint SetThreadExecutionState(uint flags);
+
+    // La primera pantalla que no sea la principal; si solo hay una, la principal. Recorrido por
+    // índice: el enumerador de DisplayArea.FindAll falla en las aplicaciones sin empaquetar.
+    private void PlaceOnAuxiliaryDisplay()
+    {
+        var target = DisplayArea.Primary;
+        var displays = DisplayArea.FindAll();
+        for (var i = 0; i < displays.Count; i++)
+        {
+            if (displays[i].DisplayId.Value != target.DisplayId.Value)
+            {
+                target = displays[i];
+                break;
+            }
+        }
+
+        AppWindow.Move(new PointInt32(target.OuterBounds.X, target.OuterBounds.Y));
+        AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
+    }
+
+    private void OnEscape(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) => Close();
+
+    // En segundo plano: abrir LibreHardwareMonitor tarda segundos y cada lectura, decenas de ms.
+    // Un fallo (settings.json mal escrito, por ejemplo) se enseña en pantalla en vez de perderse.
+    private async Task ReadLoopAsync()
+    {
+        try
+        {
+            using var reader = new HardwareReader(MonitorSettings.Load(SettingsPath));
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            do
+            {
+                var snapshot = reader.Read();
+                DispatcherQueue.TryEnqueue(() => Show(snapshot));
+            }
+            while (!closed && await timer.WaitForNextTickAsync().ConfigureAwait(false));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            DispatcherQueue.TryEnqueue(() => ShowNotice(InfoBarSeverity.Error, "No se pueden leer los sensores", e.Message));
+        }
+    }
+
+    private void Show(Snapshot snapshot)
+    {
+        ramHistory.Add(snapshot.Memory.LoadPercent);
+        RamGraph.Show(ramHistory.Values);
+        RamPercent.Text = Format.Percent(snapshot.Memory.LoadPercent);
+
+        ShowCpu(snapshot.Cpu);
+        ShowGpu(snapshot.Gpu);
+        Disks.ItemsSource = snapshot.Disks.Select(d => DiskRow.From(d, snapshot.Disks.Count)).ToList();
+        Fans.ItemsSource = snapshot.Fans.Select(FanRow.From).ToList();
+
+        if (snapshot.HasLowLevelAccess) Notice.IsOpen = false;
+        else ShowNotice(InfoBarSeverity.Warning, "Falta el driver PawnIO", "Sin él no hay temperatura de CPU ni ventiladores. Instálalo con install\\instalar.ps1.");
+    }
+
+    private void ShowCpu(ChipStatus? cpu)
+    {
+        cpuHistory.Add(cpu?.LoadPercent);
+        CpuGraph.Show(cpuHistory.Values);
+        cpuClockMax = Math.Max(cpuClockMax, cpu?.ClockMhz ?? 0);
+
+        CpuName.Text = Format.ChipName(cpu?.Name);
+        CpuRing.Celsius = cpu?.TemperatureC ?? double.NaN;
+        CpuLoad.Text = Format.Percent(cpu?.LoadPercent);
+        CpuClock.Text = Format.Mhz(cpu?.ClockMhz);
+        CpuClockMeter.Fraction = Format.Fraction(cpu?.ClockMhz, cpuClockMax);
+    }
+
+    private void ShowGpu(ChipStatus? gpu)
+    {
+        gpuClockMax = Math.Max(gpuClockMax, gpu?.ClockMhz ?? 0);
+
+        GpuName.Text = Format.ChipName(gpu?.Name);
+        GpuRing.Celsius = gpu?.TemperatureC ?? double.NaN;
+        GpuLoad.Text = Format.Percent(gpu?.LoadPercent);
+        GpuLoadMeter.Fraction = Format.Fraction(gpu?.LoadPercent, 100);
+        GpuClock.Text = Format.Mhz(gpu?.ClockMhz);
+        GpuClockMeter.Fraction = Format.Fraction(gpu?.ClockMhz, gpuClockMax);
+    }
+
+    private void ShowNotice(InfoBarSeverity severity, string title, string message)
+    {
+        Notice.Severity = severity;
+        Notice.Title = title;
+        Notice.Message = message;
+        Notice.IsOpen = true;
+    }
+}

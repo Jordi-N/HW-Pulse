@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Lectura del hardware. Sin interfaz: la App pinta lo que esto devuelve y las pruebas lo
+       comprueban sin abrir ventanas. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="HwPulse.Tests" />
+  </ItemGroup>
+
+</Project>

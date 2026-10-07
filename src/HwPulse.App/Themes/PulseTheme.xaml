@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La paleta del panel, copiada del SensorPanel de AIDA64: gráficos en cian, rótulos en violeta
+     suave y cifras en blanco, sobre tarjetas translúcidas de Windows 11 y el acrílico. Los
+     controles de Controls/ toman sus colores de aquí. -->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <FontFamily x:Key="PulseFont">Segoe UI Variable Display, Segoe UI</FontFamily>
+
+    <CornerRadius x:Key="PulseCorner">8</CornerRadius>
+
+    <SolidColorBrush x:Key="PulseData" Color="#22D3EE" />
+    <SolidColorBrush x:Key="PulseDataArea" Color="#3322D3EE" />
+    <SolidColorBrush x:Key="PulseTrack" Color="#26FFFFFF" />
+    <SolidColorBrush x:Key="PulseGraph" Color="#0CFFFFFF" />
+    <SolidColorBrush x:Key="PulseTitle" Color="#B9A8FF" />
+    <SolidColorBrush x:Key="PulseInk" Color="#E6E6EC" />
+    <SolidColorBrush x:Key="PulseMuted" Color="#8E8EA0" />
+
+    <Style x:Key="PulseCard" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource PulseCorner}" />
+        <Setter Property="Padding" Value="14,12,14,14" />
+    </Style>
+
+    <!-- Título de la tarjeta: centrado arriba, como en el SensorPanel. -->
+    <Style x:Key="PulseCardTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource PulseFont}" />
+        <Setter Property="FontSize" Value="19" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{StaticResource PulseTitle}" />
+    </Style>
+
+    <!-- Rótulo de un dato: «USO DE CPU», «RELOJ», el nombre de un ventilador. -->
+    <Style x:Key="PulseLabel" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource PulseFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{StaticResource PulseTitle}" />
+    </Style>
+
+    <Style x:Key="PulseValue" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource PulseFont}" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource PulseInk}" />
+    </Style>
+
+    <Style x:Key="PulseCaption" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource PulseFont}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{StaticResource PulseMuted}" />
+    </Style>
+
+</ResourceDictionary>
