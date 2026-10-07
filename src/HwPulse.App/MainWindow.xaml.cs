@@ -39,6 +39,8 @@ public sealed partial class MainWindow : Window
         RamGraph.Capacity = HistoryLength;
         CpuGraph.Capacity = HistoryLength;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "HwPulse.ico"));
+        // Ni en la barra de tareas ni en Alt+Tab: se maneja desde el icono de la bandeja.
+        AppWindow.IsShownInSwitchers = false;
 
         // Alt+F4 oculta igual que Esc: solo se sale desde el icono de la bandeja.
         AppWindow.Closing += (_, e) =>
