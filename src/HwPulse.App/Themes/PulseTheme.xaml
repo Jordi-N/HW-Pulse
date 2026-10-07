@@ -65,14 +65,16 @@
     <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="#1A22D3EE" />
     <StaticResource x:Key="MenuFlyoutItemBackgroundPressed" ResourceKey="PulseDataArea" />
 
-    <Style x:Key="PulseMenuTitle" TargetType="MenuFlyoutItem">
+    <Style x:Key="PulseMenuTitle" TargetType="MenuFlyoutItem" BasedOn="{StaticResource DefaultMenuFlyoutItemStyle}">
         <Setter Property="FontFamily" Value="{StaticResource PulseFont}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="IsEnabled" Value="False" />
     </Style>
 
-    <Style TargetType="RadioMenuFlyoutItem">
+    <!-- Con BasedOn: la plantilla de RadioMenuFlyoutItem viene de un estilo implícito de
+         XamlControlsResources, y uno implícito sin base lo sustituye y deja las opciones sin dibujar. -->
+    <Style TargetType="RadioMenuFlyoutItem" BasedOn="{StaticResource DefaultRadioMenuFlyoutItemStyle}">
         <Setter Property="FontFamily" Value="{StaticResource PulseFont}" />
         <Setter Property="FontSize" Value="14" />
     </Style>

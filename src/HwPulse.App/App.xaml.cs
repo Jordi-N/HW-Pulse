@@ -45,7 +45,7 @@ public partial class App : Application, IDisposable
         tray.ForceCreate();
 
         window = new MainWindow();
-        window.Activate();
+        window.ShowPanel();
     }
 
     private void ShowPanel() => window?.ShowPanel();

@@ -39,8 +39,6 @@ public sealed partial class MainWindow : Window
         RamGraph.Capacity = HistoryLength;
         CpuGraph.Capacity = HistoryLength;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "HwPulse.ico"));
-        PlaceOnChosenDisplay();
-        KeepAwake(true);
 
         // Alt+F4 oculta igual que Esc: solo se sale desde el icono de la bandeja.
         AppWindow.Closing += (_, e) =>
@@ -53,11 +51,13 @@ public sealed partial class MainWindow : Window
         readLoop = Task.Run(ReadLoopAsync);
     }
 
+    // Al arrancar y al volver desde la bandeja. La pantalla completa se pone con la ventana ya
+    // visible: puesta antes, al aparecer la ventana Windows Server la dejaba en modo ventana.
     public void ShowPanel()
     {
-        AppWindow.Show();
-        AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
         Activate();
+        AppWindow.Show();
+        PlaceOnChosenDisplay();
         KeepAwake(true);
     }
 
