@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using HwPulse.Sensors;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -38,7 +39,7 @@ public sealed partial class MainWindow : Window
         RamGraph.Capacity = HistoryLength;
         CpuGraph.Capacity = HistoryLength;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "HwPulse.ico"));
-        PlaceOnAuxiliaryDisplay();
+        PlaceOnChosenDisplay();
         KeepAwake(true);
 
         // Alt+F4 oculta igual que Esc: solo se sale desde el icono de la bandeja.
@@ -82,23 +83,92 @@ public sealed partial class MainWindow : Window
     [LibraryImport("kernel32.dll")]
     private static partial uint SetThreadExecutionState(uint flags);
 
-    // La primera pantalla que no sea la principal; si solo hay una, la principal. Recorrido por
-    // índice: el enumerador de DisplayArea.FindAll falla en las aplicaciones sin empaquetar.
-    private void PlaceOnAuxiliaryDisplay()
+    private void PlaceOnChosenDisplay()
     {
-        var target = DisplayArea.Primary;
-        var displays = DisplayArea.FindAll();
-        for (var i = 0; i < displays.Count; i++)
+        var displays = Displays();
+        var primary = DisplayArea.Primary.DisplayId.Value;
+        var index = DisplayPick.Choose(
+            displays.Select(d => Corner(d.OuterBounds)).ToList(),
+            displays.FindIndex(d => d.DisplayId.Value == primary),
+            SavedDisplay());
+        MoveTo(displays[index]);
+    }
+
+    // Con settings.json mal escrito se usa la pantalla por defecto: el error ya lo enseña el bucle
+    // de lectura, que carga el mismo fichero.
+    private static DisplayCorner? SavedDisplay()
+    {
+        try
         {
-            if (displays[i].DisplayId.Value != target.DisplayId.Value)
+            return MonitorSettings.Load(SettingsPath).Display;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    // Ocupa entera la pantalla destino antes de pasar a pantalla completa: con solo mover la
+    // esquina, la ventana conserva su tamaño y puede quedarse en la pantalla que más tape.
+    private void MoveTo(DisplayArea display)
+    {
+        AppWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
+        AppWindow.MoveAndResize(display.OuterBounds);
+        AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
+    }
+
+    // De izquierda a derecha, para que «Pantalla 1» sea la de más a la izquierda. Recorrido por
+    // índice: el enumerador de DisplayArea.FindAll falla en las aplicaciones sin empaquetar.
+    private static List<DisplayArea> Displays()
+    {
+        var all = DisplayArea.FindAll();
+        var displays = new List<DisplayArea>(all.Count);
+        for (var i = 0; i < all.Count; i++) displays.Add(all[i]);
+        return [.. displays.OrderBy(d => d.OuterBounds.X).ThenBy(d => d.OuterBounds.Y)];
+    }
+
+    private static DisplayCorner Corner(RectInt32 bounds) => new(bounds.X, bounds.Y);
+
+    // Clic derecho en el panel: elegir la pantalla, que se recuerda para los siguientes arranques.
+    private void OnRightTapped(object sender, RightTappedRoutedEventArgs args)
+    {
+        var primary = DisplayArea.Primary.DisplayId.Value;
+        var current = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest).DisplayId.Value;
+        var menu = new MenuFlyout();
+        menu.Items.Add(new MenuFlyoutItem { Text = "PANTALLA", Style = (Style)Application.Current.Resources["PulseMenuTitle"] });
+        menu.Items.Add(new MenuFlyoutSeparator());
+        var number = 0;
+        foreach (var display in Displays())
+        {
+            var bounds = display.OuterBounds;
+            var label = $"Pantalla {++number} · {bounds.Width}×{bounds.Height}";
+            var item = new RadioMenuFlyoutItem
             {
-                target = displays[i];
-                break;
-            }
+                Text = display.DisplayId.Value == primary ? label + " · principal" : label,
+                IsChecked = display.DisplayId.Value == current,
+            };
+            item.Click += (_, _) =>
+            {
+                MoveTo(display);
+                SaveDisplay(Corner(bounds));
+            };
+            menu.Items.Add(item);
         }
 
-        AppWindow.Move(new PointInt32(target.OuterBounds.X, target.OuterBounds.Y));
-        AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
+        var target = (UIElement)sender;
+        menu.ShowAt(target, args.GetPosition(target));
+    }
+
+    private void SaveDisplay(DisplayCorner corner)
+    {
+        try
+        {
+            MonitorSettings.SaveDisplay(SettingsPath, corner);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
+        {
+            ShowNotice(InfoBarSeverity.Error, "No se puede guardar la pantalla elegida", e.Message);
+        }
     }
 
     private void OnEscape(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) => HidePanel();
@@ -118,7 +188,7 @@ public sealed partial class MainWindow : Window
             }
             while (!exiting && await timer.WaitForNextTickAsync().ConfigureAwait(false));
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {
             DispatcherQueue.TryEnqueue(() => ShowNotice(InfoBarSeverity.Error, "No se pueden leer los sensores", e.Message));
         }

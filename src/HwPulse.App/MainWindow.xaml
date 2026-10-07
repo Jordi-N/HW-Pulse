@@ -13,7 +13,7 @@
         <local:PinnedAcrylicBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid>
+    <Grid Background="Transparent" RightTapped="OnRightTapped">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="OnEscape" />
         </Grid.KeyboardAccelerators>

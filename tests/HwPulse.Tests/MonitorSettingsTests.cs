@@ -65,6 +65,53 @@ public class MonitorSettingsTests
     }
 
     [Fact]
+    public void ParseReadsDisplay()
+    {
+        var settings = MonitorSettings.Parse("""{ "display": { "x": -1280, "y": 0 } }""");
+
+        Assert.Equal(new DisplayCorner(-1280, 0), settings.Display);
+    }
+
+    [Fact]
+    public void ParseWithoutDisplayReturnsNull()
+    {
+        Assert.Null(MonitorSettings.Parse("{}").Display);
+    }
+
+    [Fact]
+    public void WithDisplayKeepsTheOtherSettings()
+    {
+        var json = MonitorSettings.WithDisplay("""
+            {
+              // Bomba del líquido
+              "fans": [ { "sensor": "Fan #2", "label": "PUMP", "maxRpm": 3000 }, ],
+              "services": [ { "name": "W3SVC", "label": "IIS" } ]
+            }
+            """, new DisplayCorner(-1280, 0));
+
+        var settings = MonitorSettings.Parse(json);
+        Assert.Equal([new FanSetting("Fan #2", "PUMP", 3000)], settings.Fans);
+        Assert.Equal([new ServiceSetting("W3SVC", "IIS")], settings.Services);
+        Assert.Equal(new DisplayCorner(-1280, 0), settings.Display);
+    }
+
+    [Fact]
+    public void WithDisplayReplacesThePreviousOneInAnyCase()
+    {
+        var json = MonitorSettings.WithDisplay("""{ "Display": { "x": 0, "y": 0 } }""", new DisplayCorner(1920, 0));
+
+        Assert.Equal("""{"Display":{"x":1920,"y":0}}""", json.Replace(" ", "", StringComparison.Ordinal).ReplaceLineEndings(""));
+    }
+
+    [Fact]
+    public void WithDisplayWithoutFileCreatesIt()
+    {
+        var json = MonitorSettings.WithDisplay(null, new DisplayCorner(-1280, 0));
+
+        Assert.Equal(new DisplayCorner(-1280, 0), MonitorSettings.Parse(json).Display);
+    }
+
+    [Fact]
     public void LoadMissingFileReturnsEmpty()
     {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");

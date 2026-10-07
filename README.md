@@ -24,7 +24,7 @@ dotnet test HwPulse.sln
 
 ## Install
 
-Download `HwPulse-Setup-x.y.z.exe` from [Releases](https://github.com/Jordi-N/HW-Pulse/releases/latest) and run it. It installs to `C:\Program Files\HW Pulse`, installs the PawnIO driver if missing and starts the panel at logon with highest privileges, so no UAC prompt. Run a newer setup to update; `settings.json` is kept. Esc hides the panel to the tray icon; click it to show the panel again. Its right-click menu toggles «Iniciar con Windows» and exits. The Start menu shortcut opens the panel without a UAC prompt.
+Download `HwPulse-Setup-x.y.z.exe` from [Releases](https://github.com/Jordi-N/HW-Pulse/releases/latest) and run it. It installs to `C:\Program Files\HW Pulse`, installs the PawnIO driver if missing and starts the panel at logon with highest privileges, so no UAC prompt. Run a newer setup to update; `settings.json` is kept. Esc hides the panel to the tray icon; click it to show the panel again. Its right-click menu toggles «Iniciar con Windows» and exits. Right-click the panel to choose its screen; the choice is saved in `settings.json`. Until then it opens on the first screen that is not the primary one. The Start menu shortcut opens the panel without a UAC prompt.
 
 ## Release
 
@@ -56,11 +56,13 @@ dotnet publish src\HwPulse.App\HwPulse.App.csproj -c Release -o publish
   ],
   "services": [
     { "name": "W3SVC", "label": "IIS" }
-  ]
+  ],
+  "display": { "x": -1280, "y": 0 }
 }
 ```
 
 - **fans:** sensors sharing a label become one marker showing the average of those spinning, in the order of first appearance. Without `fans`, every spinning sensor is shown under its own name. The GPU fans are always added last as a `GPU` marker.
+- **display:** written by the panel when you pick a screen with right-click: the top-left corner of that screen. If no connected screen has that corner, the panel uses the first screen that is not the primary one. Saving it rewrites the file and drops any `//` comments.
 - **services:** Windows services to watch. Without `services`, IIS, Jellyfin and every GitHub Actions runner installed are shown, and a runner running a job reads «Ocupado».
 
 ## License
