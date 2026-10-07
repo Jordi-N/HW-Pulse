@@ -45,3 +45,8 @@ jobs:
         with:
           files: dist/HwPulse-Setup-*.exe
           generate_release_notes: true
+          # SignPath exige que la página de descarga lo mencione.
+          body: |
+            Download the `HwPulse-Setup-x.y.z.exe` installer below and run it. See the [README](https://github.com/Jordi-N/HW-Pulse#install) for details.
+
+            Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
