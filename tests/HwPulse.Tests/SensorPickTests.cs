@@ -9,6 +9,7 @@ public class SensorPickTests
     private static Reading Load(string name, float? value) => new(SensorType.Load, name, value);
     private static Reading Clock(string name, float? value) => new(SensorType.Clock, name, value);
     private static Reading Fan(string name, float? value) => new(SensorType.Fan, name, value);
+    private static Reading Control(string name, float? value) => new(SensorType.Control, name, value);
 
     [Fact]
     public void CpuTemperaturePrefersPackage()
@@ -119,5 +120,73 @@ public class SensorPickTests
         Assert.Equal(
             [new FanStatus("PUMP", 6000, 1f), new FanStatus("REAR", 0, 0f), new FanStatus("CPU", 1500, 0.75f)],
             SensorPick.Fans(readings, settings));
+    }
+
+    [Fact]
+    public void FansWithSharedLabelAverageSpinningSensors()
+    {
+        Reading[] readings = [Fan("Fan #1", 800), Fan("Fan #4", 1000), Fan("Fan #2", 0), Fan("Fan #3", 0), Fan("Fan #7", 2400)];
+        FanSetting[] settings =
+        [
+            new("Fan #2", "CPU"),
+            new("Fan #7", "PUMP", 3000),
+            new("Fan #1", "CHASIS"),
+            new("Fan #3", "CPU"),
+            new("Fan #4", "CHASIS"),
+        ];
+
+        Assert.Equal(
+            [new FanStatus("CPU", 0, 0f), new FanStatus("PUMP", 2400, 0.8f), new FanStatus("CHASIS", 900, 0.45f)],
+            SensorPick.Fans(readings, settings));
+    }
+
+    [Fact]
+    public void GpuFanUsesControlPercentForTheBar()
+    {
+        Reading[] readings = [Fan("GPU Fan 1", 1200), Fan("GPU Fan 2", 1400), Control("GPU Fan 1", 40), Control("GPU Fan 2", 60)];
+
+        Assert.Equal(new FanStatus("GPU", 1300, 0.5f), SensorPick.GpuFan(readings));
+    }
+
+    [Fact]
+    public void GpuFanWithoutControlUsesDefaultMax()
+    {
+        Assert.Equal(new FanStatus("GPU", 1000, 0.5f), SensorPick.GpuFan([Fan("GPU Fan", 1000)]));
+    }
+
+    [Fact]
+    public void GpuFanStoppedAtIdleReadsZero()
+    {
+        Assert.Equal(new FanStatus("GPU", 0, 0f), SensorPick.GpuFan([Fan("GPU Fan 1", 0), Control("GPU Fan 1", 0)]));
+    }
+
+    [Fact]
+    public void GpuFanWithoutFanSensorsIsNull()
+    {
+        Assert.Null(SensorPick.GpuFan([Temp("GPU Core", 50)]));
+    }
+
+    [Fact]
+    public void NetworkPicksAdapterThatMovedMostData()
+    {
+        (string, IReadOnlyList<Reading>)[] adapters =
+        [
+            ("vEthernet (Default Switch)", [new(SensorType.Data, "Data Downloaded", 0.1f), new(SensorType.Throughput, "Download Speed", 10)]),
+            ("Ethernet",
+            [
+                new(SensorType.Data, "Data Downloaded", 40),
+                new(SensorType.Data, "Data Uploaded", 5),
+                new(SensorType.Throughput, "Download Speed", 1_250_000),
+                new(SensorType.Throughput, "Upload Speed", 125_000),
+            ]),
+        ];
+
+        Assert.Equal(new NetworkStatus("Ethernet", 1_250_000, 125_000), SensorPick.Network(adapters));
+    }
+
+    [Fact]
+    public void NetworkWithoutAdaptersIsNull()
+    {
+        Assert.Null(SensorPick.Network([]));
     }
 }

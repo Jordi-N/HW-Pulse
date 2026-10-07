@@ -12,7 +12,7 @@ Full-screen, real-time view of the machine's status (CPU, GPU, RAM, disks and fa
 | `src/HwPulse.Sensors` | Hardware reading, no UI |
 | `src/HwPulse.App` | Full-screen window |
 | `tests/HwPulse.Tests` | Tests for the sensor logic |
-| `install` | Publishing and automatic startup |
+| `install` | Inno Setup script for the installer |
 
 ## Development
 
@@ -23,22 +23,41 @@ dotnet test HwPulse.sln
 
 ## Install
 
-From an administrator PowerShell:
+Download `HwPulse-Setup-x.y.z.exe` from [Releases](https://github.com/Jordi-N/HW-Pulse/releases/latest) and run it. It installs to `C:\Program Files\HW Pulse`, installs the PawnIO driver if missing and starts the panel at logon with highest privileges, so no UAC prompt. Run a newer setup to update; `settings.json` is kept. Esc hides the panel to the tray icon; click it to show the panel again. Its right-click menu toggles «Iniciar con Windows» and exits. The Start menu shortcut opens the panel without a UAC prompt.
+
+## Release
+
+Push a version tag and the `Release` workflow builds, tests and publishes the installer:
 
 ```powershell
-.\install\instalar.ps1
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
-It publishes to `C:\Program Files\HW Pulse`, installs PawnIO with winget and registers a logon task with highest privileges. Run it again to update. Press Esc to close the window.
+To build the installer locally (needs [Inno Setup 6](https://jrsoftware.org/isinfo.php) and `install\PawnIO_setup.exe` from [PawnIO.Setup](https://github.com/namazso/PawnIO.Setup/releases)):
+
+```powershell
+dotnet publish src\HwPulse.App\HwPulse.App.csproj -c Release -o publish
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DVersion=0.2.0 install\HwPulse.iss
+```
 
 ## Optional configuration
 
-`settings.json` next to the executable, to name the fans:
+`settings.json` next to the executable (`C:\Program Files\HW Pulse`). Restart the panel after editing it.
 
 ```json
 {
   "fans": [
-    { "sensor": "Fan #2", "label": "PUMP", "maxRpm": 3000 }
+    { "sensor": "Fan #2", "label": "CPU" },
+    { "sensor": "Fan #7", "label": "PUMP", "maxRpm": 3000 },
+    { "sensor": "Fan #1", "label": "CHASIS" },
+    { "sensor": "Fan #4", "label": "CHASIS" }
+  ],
+  "services": [
+    { "name": "W3SVC", "label": "IIS" }
   ]
 }
 ```
+
+- **fans:** sensors sharing a label become one marker showing the average of those spinning, in the order of first appearance. Without `fans`, every spinning sensor is shown under its own name. The GPU fans are always added last as a `GPU` marker.
+- **services:** Windows services to watch. Without `services`, IIS, Jellyfin and every GitHub Actions runner installed are shown, and a runner running a job reads «Ocupado».

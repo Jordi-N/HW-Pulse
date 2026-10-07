@@ -1,0 +1,47 @@
+name: Release
+
+# Solo al subir una etiqueta de versión (git tag v0.2.0 && git push origin v0.2.0): compila,
+# prueba, genera el instalador y lo publica en Releases.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  PAWNIO_VERSION: 2.2.0
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Probar
+        run: dotnet test HwPulse.sln -c Release
+
+      - name: Publicar
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          dotnet publish src/HwPulse.App/HwPulse.App.csproj -c Release -o publish -p:Version=$version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Crear el instalador
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          Invoke-WebRequest "https://github.com/namazso/PawnIO.Setup/releases/download/$env:PAWNIO_VERSION/PawnIO_setup.exe" -OutFile install/PawnIO_setup.exe
+          choco install innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DVersion=$version" install/HwPulse.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/HwPulse-Setup-*.exe
+          generate_release_notes: true

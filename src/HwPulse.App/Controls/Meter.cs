@@ -11,6 +11,9 @@ public sealed partial class Meter : Grid
     public static readonly DependencyProperty FractionProperty = DependencyProperty.Register(
         nameof(Fraction), typeof(double), typeof(Meter), new PropertyMetadata(0d, (d, _) => ((Meter)d).Fill()));
 
+    public static readonly DependencyProperty BarBrushProperty = DependencyProperty.Register(
+        nameof(BarBrush), typeof(Brush), typeof(Meter), new PropertyMetadata(null, (d, e) => ((Meter)d).bar.Background = (Brush)e.NewValue));
+
     private readonly ColumnDefinition filledColumn = new();
     private readonly ColumnDefinition emptyColumn = new();
     private readonly RowDefinition emptyRow = new();
@@ -36,6 +39,13 @@ public sealed partial class Meter : Grid
     {
         get => (double)GetValue(FractionProperty);
         set => SetValue(FractionProperty, value);
+    }
+
+    // Cian por defecto; los discos la cambian según lo llenos que estén.
+    public Brush BarBrush
+    {
+        get => (Brush)GetValue(BarBrushProperty);
+        set => SetValue(BarBrushProperty, value);
     }
 
     public Orientation Orientation

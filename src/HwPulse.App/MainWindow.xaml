@@ -43,6 +43,31 @@
                             <TextBlock x:Name="RamPercent" HorizontalAlignment="Right" Text="—" Style="{StaticResource PulseValue}" />
                         </Grid>
                         <controls:Sparkline x:Name="RamGraph" Grid.Row="2" />
+                        <StackPanel Grid.Row="3" Margin="0,14,0,0" Spacing="8">
+                            <TextBlock Text="SERVICIOS" Style="{StaticResource PulseLabel}" />
+                            <ItemsControl x:Name="Services">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:ServiceRow">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Width="9" Height="9" VerticalAlignment="Center" Fill="{x:Bind Color}" />
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Label}" TextTrimming="CharacterEllipsis" Style="{StaticResource PulseValue}" FontSize="13" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind State}" Foreground="{x:Bind Color}" Style="{StaticResource PulseValue}" FontSize="13" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock x:Name="NoServices" Text="Ninguno instalado" Style="{StaticResource PulseCaption}" />
+                        </StackPanel>
                     </Grid>
                 </Border>
 
@@ -92,9 +117,10 @@
                                         <TextBlock HorizontalAlignment="Center" Text="{x:Bind Title}" Style="{StaticResource PulseLabel}" />
                                         <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="48">
                                             <controls:TemperatureRing Width="{x:Bind RingSize}" Height="{x:Bind RingSize}" Celsius="{x:Bind Celsius}" />
-                                            <StackPanel VerticalAlignment="Bottom" Spacing="6">
-                                                <controls:Meter Width="20" Height="{x:Bind RingSize}" Orientation="Vertical" Fraction="{x:Bind UsedFraction}" HorizontalAlignment="Center" />
-                                                <TextBlock HorizontalAlignment="Center" Text="{x:Bind Used}" Style="{StaticResource PulseValue}" />
+                                            <StackPanel VerticalAlignment="Bottom" Spacing="4">
+                                                <controls:Meter Width="20" Height="{x:Bind BarHeight}" HorizontalAlignment="Center" Orientation="Vertical" Fraction="{x:Bind UsedFraction}" BarBrush="{x:Bind Fill}" />
+                                                <TextBlock HorizontalAlignment="Center" Text="{x:Bind Free}" Style="{StaticResource PulseValue}" />
+                                                <TextBlock HorizontalAlignment="Center" Text="{x:Bind Total}" Style="{StaticResource PulseCaption}" />
                                             </StackPanel>
                                         </StackPanel>
                                     </StackPanel>
@@ -130,38 +156,62 @@
                     </Grid>
                 </Border>
 
-                <!-- Ventiladores -->
-                <Border Grid.Column="4" Style="{StaticResource PulseCard}">
-                    <Grid RowSpacing="10">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="VENTILADORES" Style="{StaticResource PulseCardTitle}" />
-                        <ItemsControl x:Name="Fans" Grid.Row="1" Margin="0,14,0,0">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="26" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="local:FanRow">
-                                    <Grid ColumnSpacing="12">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="72" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock HorizontalAlignment="Center" Text="{x:Bind Label}" Style="{StaticResource PulseLabel}" />
-                                            <TextBlock HorizontalAlignment="Center" Text="{x:Bind Rpm}" Style="{StaticResource PulseCaption}" />
-                                        </StackPanel>
-                                        <controls:Meter Grid.Column="1" Height="30" Fraction="{x:Bind Fraction}" />
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Grid>
-                </Border>
+                <!-- Ventiladores y red: dos tarjetas apiladas en la última columna -->
+                <Grid Grid.Column="4" RowSpacing="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Border Style="{StaticResource PulseCard}">
+                        <Grid RowSpacing="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="VENTILADORES" Style="{StaticResource PulseCardTitle}" />
+                            <ItemsControl x:Name="Fans" Grid.Row="1">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="10" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:FanRow">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="72" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind Label}" Style="{StaticResource PulseLabel}" />
+                                                <TextBlock Text="{x:Bind Rpm}" Style="{StaticResource PulseCaption}" />
+                                            </StackPanel>
+                                            <controls:Meter Grid.Column="1" Height="24" Fraction="{x:Bind Fraction}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1" Style="{StaticResource PulseCard}">
+                        <StackPanel Spacing="4">
+                            <Grid>
+                                <TextBlock Text="RED" Style="{StaticResource PulseLabel}" FontSize="15" />
+                                <TextBlock x:Name="NetworkAdapter" MaxWidth="130" HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="—" Style="{StaticResource PulseCaption}" />
+                            </Grid>
+                            <Grid>
+                                <TextBlock Text="↓ Bajada" FontSize="13" Style="{StaticResource PulseCaption}" />
+                                <TextBlock x:Name="NetworkDown" HorizontalAlignment="Right" Text="—" Style="{StaticResource PulseValue}" />
+                            </Grid>
+                            <Grid>
+                                <TextBlock Text="↑ Subida" FontSize="13" Style="{StaticResource PulseCaption}" />
+                                <TextBlock x:Name="NetworkUp" HorizontalAlignment="Right" Text="—" Style="{StaticResource PulseValue}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Grid>
         </Viewbox>
 

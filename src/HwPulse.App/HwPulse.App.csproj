@@ -14,10 +14,15 @@
     <UseWinUI>true</UseWinUI>
     <WindowsPackageType>None</WindowsPackageType>
 
+    <!-- El punto de entrada es Program.cs: decide si ya hay un panel en marcha antes de arrancar
+         la interfaz. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+
     <!-- Aunque no haya MSIX: es lo que mete HwPulse.pri (con el XAML compilado dentro) en la carpeta
          publicada. Sin él la aplicación arranca y se cierra al abrir la ventana. -->
     <EnableMsixTooling>true</EnableMsixTooling>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\HwPulse.ico</ApplicationIcon>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
@@ -28,11 +33,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="H.NotifyIcon.WinUI" Version="2.4.1" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260710003" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\HwPulse.Sensors\HwPulse.Sensors.csproj" />
+  </ItemGroup>
+
+  <!-- El .exe lleva el icono incrustado (Explorador, instalador); la ventana lo carga de este
+       fichero para la barra de tareas y Alt+Tab. -->
+  <ItemGroup>
+    <Content Include="Assets\HwPulse.ico" Link="HwPulse.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -17,6 +17,9 @@
     <SolidColorBrush x:Key="PulseTitle" Color="#B9A8FF" />
     <SolidColorBrush x:Key="PulseInk" Color="#E6E6EC" />
     <SolidColorBrush x:Key="PulseMuted" Color="#8E8EA0" />
+    <SolidColorBrush x:Key="PulseOk" Color="#4ADE80" />
+    <SolidColorBrush x:Key="PulseWarn" Color="#FBBF24" />
+    <SolidColorBrush x:Key="PulseError" Color="#F87171" />
 
     <Style x:Key="PulseCard" TargetType="Border">
         <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />

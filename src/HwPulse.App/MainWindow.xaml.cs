@@ -13,7 +13,7 @@ public sealed partial class MainWindow : Window
 {
     private const int HistoryLength = 60;
 
-    // Pantalla y sistema despiertos mientras el proceso viva: es un panel que se mira, no se toca.
+    // Pantalla y sistema despiertos mientras el panel se vea: es un panel que se mira, no se toca.
     private const uint EsContinuous = 0x80000000;
     private const uint EsSystemRequired = 0x00000001;
     private const uint EsDisplayRequired = 0x00000002;
@@ -24,8 +24,9 @@ public sealed partial class MainWindow : Window
     private readonly History cpuHistory = new(HistoryLength);
     private readonly Task readLoop;
 
-    // Lo levanta el cierre de la ventana; el bucle de lectura termina en su siguiente vuelta.
-    private volatile bool closed;
+    // Lo levanta «Salir»: el bucle de lectura termina en su siguiente vuelta y la ventana deja de
+    // ocultarse en vez de cerrarse.
+    private volatile bool exiting;
 
     // Ningún sensor da el reloj máximo: las barras de reloj se miden contra el mayor visto.
     private float cpuClockMax;
@@ -36,19 +37,46 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         RamGraph.Capacity = HistoryLength;
         CpuGraph.Capacity = HistoryLength;
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "HwPulse.ico"));
         PlaceOnAuxiliaryDisplay();
+        KeepAwake(true);
 
-        if (SetThreadExecutionState(EsContinuous | EsSystemRequired | EsDisplayRequired) == 0)
+        // Alt+F4 oculta igual que Esc: solo se sale desde el icono de la bandeja.
+        AppWindow.Closing += (_, e) =>
         {
-            throw new Win32Exception();
-        }
+            if (exiting) return;
+            e.Cancel = true;
+            HidePanel();
+        };
 
         readLoop = Task.Run(ReadLoopAsync);
-        Closed += (_, _) =>
-        {
-            closed = true;
-            readLoop.Wait();
-        };
+    }
+
+    public void ShowPanel()
+    {
+        AppWindow.Show();
+        AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
+        Activate();
+        KeepAwake(true);
+    }
+
+    public void Shutdown()
+    {
+        exiting = true;
+        readLoop.Wait();
+        Close();
+    }
+
+    private void HidePanel()
+    {
+        AppWindow.Hide();
+        KeepAwake(false);
+    }
+
+    private static void KeepAwake(bool on)
+    {
+        var flags = on ? EsContinuous | EsSystemRequired | EsDisplayRequired : EsContinuous;
+        if (SetThreadExecutionState(flags) == 0) throw new Win32Exception();
     }
 
     [LibraryImport("kernel32.dll")]
@@ -73,7 +101,7 @@ public sealed partial class MainWindow : Window
         AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
     }
 
-    private void OnEscape(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) => Close();
+    private void OnEscape(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) => HidePanel();
 
     // En segundo plano: abrir LibreHardwareMonitor tarda segundos y cada lectura, decenas de ms.
     // Un fallo (settings.json mal escrito, por ejemplo) se enseña en pantalla en vez de perderse.
@@ -88,7 +116,7 @@ public sealed partial class MainWindow : Window
                 var snapshot = reader.Read();
                 DispatcherQueue.TryEnqueue(() => Show(snapshot));
             }
-            while (!closed && await timer.WaitForNextTickAsync().ConfigureAwait(false));
+            while (!exiting && await timer.WaitForNextTickAsync().ConfigureAwait(false));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
@@ -106,9 +134,14 @@ public sealed partial class MainWindow : Window
         ShowGpu(snapshot.Gpu);
         Disks.ItemsSource = snapshot.Disks.Select(d => DiskRow.From(d, snapshot.Disks.Count)).ToList();
         Fans.ItemsSource = snapshot.Fans.Select(FanRow.From).ToList();
+        NetworkAdapter.Text = snapshot.Network?.Adapter ?? "—";
+        NetworkDown.Text = Format.Bitrate(snapshot.Network?.DownloadBytesPerSecond);
+        NetworkUp.Text = Format.Bitrate(snapshot.Network?.UploadBytesPerSecond);
+        Services.ItemsSource = snapshot.Services.Select(ServiceRow.From).ToList();
+        NoServices.Visibility = snapshot.Services.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         if (snapshot.HasLowLevelAccess) Notice.IsOpen = false;
-        else ShowNotice(InfoBarSeverity.Warning, "Falta el driver PawnIO", "Sin él no hay temperatura de CPU ni ventiladores. Instálalo con install\\instalar.ps1.");
+        else ShowNotice(InfoBarSeverity.Warning, "Falta el driver PawnIO", "Sin él no hay temperatura de CPU ni ventiladores. Reinstala HW Pulse con su instalador, que lo incluye.");
     }
 
     private void ShowCpu(ChipStatus? cpu)

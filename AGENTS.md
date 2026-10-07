@@ -9,7 +9,7 @@ Full-screen hardware monitor for a 1280×400 auxiliary display, replacing the AI
 | `src/HwPulse.Sensors` | Hardware reading (LibreHardwareMonitorLib + PawnIO driver). No UI. |
 | `src/HwPulse.App` | WinUI 3 unpackaged, self-contained, full-screen window. |
 | `tests/HwPulse.Tests` | xUnit tests for the pure logic in Sensors. |
-| `install` | Publish, PawnIO install and logon task. |
+| `install` | Inno Setup script: installs the app and PawnIO and registers the logon task. Built by `.github/workflows/release.yml` on `v*` tags. |
 
 ```powershell
 dotnet build HwPulse.sln

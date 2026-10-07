@@ -23,6 +23,17 @@ public class MonitorSettingsTests
     }
 
     [Fact]
+    public void ParseReadsServices()
+    {
+        var settings = MonitorSettings.Parse("""
+            { "services": [ { "name": "W3SVC", "label": "IIS" } ] }
+            """);
+
+        Assert.Equal([new ServiceSetting("W3SVC", "IIS")], settings.Services);
+        Assert.Empty(settings.Fans);
+    }
+
+    [Fact]
     public void ParseAcceptsCommentsTrailingCommasAndAnyCase()
     {
         var settings = MonitorSettings.Parse("""
@@ -37,11 +48,14 @@ public class MonitorSettingsTests
 
     [Theory]
     [InlineData("{}")]
-    [InlineData("""{ "fans": null }""")]
+    [InlineData("""{ "fans": null, "services": null }""")]
     [InlineData("null")]
-    public void ParseWithoutFansReturnsEmptyList(string json)
+    public void ParseWithoutListsReturnsEmptyLists(string json)
     {
-        Assert.Empty(MonitorSettings.Parse(json).Fans);
+        var settings = MonitorSettings.Parse(json);
+
+        Assert.Empty(settings.Fans);
+        Assert.Empty(settings.Services);
     }
 
     [Fact]

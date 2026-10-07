@@ -41,8 +41,10 @@ internal static class SensorPick
     public static T? Gpu<T>(IEnumerable<T> gpus, Func<T, HardwareType> typeOf) where T : class =>
         gpus.OrderBy(g => typeOf(g) == HardwareType.GpuIntel ? 1 : 0).FirstOrDefault();
 
-    // Con ventiladores configurados se muestran esos, en ese orden y con ese nombre. Sin
-    // configuración, los que giran: las placas reportan muchos conectores vacíos a 0 RPM.
+    // Con ventiladores configurados se muestran esos, en ese orden y con ese nombre. Los sensores
+    // con la misma etiqueta forman un solo marcador con la media de los que giran: «CHASIS» para
+    // todos los de la caja, «CPU» para CPU_FAN y CPU_OPT. Sin configuración, uno por sensor que
+    // gire: las placas reportan muchos conectores vacíos a 0 RPM.
     public static IReadOnlyList<FanStatus> Fans(IReadOnlyList<Reading> readings, IReadOnlyList<FanSetting> settings)
     {
         var fans = readings.Where(r => r.Type == SensorType.Fan && r.Value is not null).ToList();
@@ -55,11 +57,55 @@ internal static class SensorPick
         }
 
         return settings
-            .Select(s => (Setting: s, Reading: fans.FirstOrDefault(f => f.Name == s.Sensor)))
-            .Where(p => p.Reading.Name is not null)
-            .Select(p => Fan(p.Setting.Label, p.Reading.Value!.Value, p.Setting.MaxRpm))
+            .GroupBy(s => s.Label)
+            .Select(group => (
+                Label: group.Key,
+                group.First().MaxRpm,
+                Rpms: group
+                    .Select(s => fans.FirstOrDefault(f => f.Name == s.Sensor))
+                    .Where(f => f.Name is not null)
+                    .Select(f => f.Value!.Value)
+                    .ToList()))
+            .Where(group => group.Rpms.Count > 0)
+            .Select(group => Fan(group.Label, SpinningAverage(group.Rpms), group.MaxRpm))
             .ToList();
     }
+
+    // Los ventiladores de la gráfica, en un solo marcador. La barra sale del % de control que da la
+    // tarjeta, porque el máximo de RPM cambia de un modelo a otro; sin control, contra el máximo
+    // por defecto.
+    public static FanStatus? GpuFan(IReadOnlyList<Reading> readings)
+    {
+        var rpms = Values(readings, SensorType.Fan);
+        if (rpms.Count == 0) return null;
+
+        var rpm = SpinningAverage(rpms);
+        var controls = Values(readings, SensorType.Control);
+        return controls.Count == 0
+            ? Fan("GPU", rpm, FanSetting.DefaultMaxRpm)
+            : new FanStatus("GPU", rpm, Math.Clamp(controls.Average() / 100, 0f, 1f));
+    }
+
+    // El adaptador principal es el que más datos ha movido desde el arranque: así no salen los
+    // virtuales (vEthernet, Bluetooth) que existen pero apenas tienen tráfico.
+    public static NetworkStatus? Network(IReadOnlyList<(string Name, IReadOnlyList<Reading> Readings)> adapters)
+    {
+        if (adapters.Count == 0) return null;
+        var (name, readings) = adapters.MaxBy(a => Values(a.Readings, SensorType.Data).Sum());
+        return new NetworkStatus(
+            name,
+            Named(readings, SensorType.Throughput, "Download Speed"),
+            Named(readings, SensorType.Throughput, "Upload Speed"));
+    }
+
+    private static float SpinningAverage(List<float> rpms)
+    {
+        var spinning = rpms.Where(r => r > 0).ToList();
+        return spinning.Count == 0 ? 0 : spinning.Average();
+    }
+
+    private static List<float> Values(IReadOnlyList<Reading> readings, SensorType type) =>
+        readings.Where(r => r.Type == type && r.Value is not null).Select(r => r.Value!.Value).ToList();
 
     private static FanStatus Fan(string label, float rpm, float maxRpm) =>
         new(label, rpm, Math.Clamp(rpm / maxRpm, 0f, 1f));

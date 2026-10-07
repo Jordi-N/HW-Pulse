@@ -4,8 +4,9 @@ using LibreHardwareMonitor.PawnIo;
 
 namespace HwPulse.Sensors;
 
-// Única puerta a LibreHardwareMonitor. Necesita ejecutarse como administrador; sin el driver PawnIO
-// siguen llegando discos, RAM y la gráfica NVIDIA, pero no temperaturas de CPU ni ventiladores.
+// La lectura completa del equipo: el hardware, por LibreHardwareMonitor, y los servicios vigilados.
+// Necesita ejecutarse como administrador; sin el driver PawnIO siguen llegando discos, RAM y la
+// gráfica NVIDIA, pero no temperaturas de CPU ni ventiladores.
 public sealed class HardwareReader : IDisposable
 {
     private static readonly HardwareType[] GpuTypes = [HardwareType.GpuNvidia, HardwareType.GpuAmd, HardwareType.GpuIntel];
@@ -18,13 +19,16 @@ public sealed class HardwareReader : IDisposable
         IsMotherboardEnabled = true,
         IsControllerEnabled = true,
         IsStorageEnabled = true,
+        IsNetworkEnabled = true,
     };
 
     private readonly MonitorSettings settings;
+    private readonly ServiceReader services;
 
     public HardwareReader(MonitorSettings settings)
     {
         this.settings = settings;
+        services = new ServiceReader(settings.Services);
         computer.Open();
     }
 
@@ -38,12 +42,21 @@ public sealed class HardwareReader : IDisposable
         // contando también el archivo de paginación, y los módulos DIMM pueden ser Memory también.
         var memory = computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory && h.Name == "Total Memory");
 
+        List<Reading> gpuReadings = gpu is null ? [] : Readings(gpu);
+        var fans = SensorPick.Fans(FanReadings(), settings.Fans).ToList();
+        if (SensorPick.GpuFan(gpuReadings) is { } gpuFan) fans.Add(gpuFan);
+
         return new Snapshot(
             Memory(memory),
             cpu is null ? null : Cpu(cpu),
-            gpu is null ? null : Gpu(gpu),
+            gpu is null ? null : Gpu(gpu.Name, gpuReadings),
             Disks(),
-            SensorPick.Fans(FanReadings(), settings.Fans),
+            fans,
+            SensorPick.Network(computer.Hardware
+                .Where(h => h.HardwareType == HardwareType.Network)
+                .Select(h => (h.Name, (IReadOnlyList<Reading>)Readings(h)))
+                .ToList()),
+            services.Read(),
             PawnIo.IsInstalled);
     }
 
@@ -58,15 +71,8 @@ public sealed class HardwareReader : IDisposable
     private static List<Reading> Readings(IHardware hardware) =>
         hardware.Sensors.Select(s => new Reading(s.SensorType, s.Name, s.Value)).ToList();
 
-    private static MemoryStatus Memory(IHardware? memory)
-    {
-        if (memory is null) return new MemoryStatus(null, null, null);
-        var readings = Readings(memory);
-        var used = readings.FirstOrDefault(r => r.Type == SensorType.Data && r.Name == "Memory Used").Value;
-        var available = readings.FirstOrDefault(r => r.Type == SensorType.Data && r.Name == "Memory Available").Value;
-        var load = readings.FirstOrDefault(r => r.Type == SensorType.Load && r.Name == "Memory").Value;
-        return new MemoryStatus(load, used, used + available);
-    }
+    private static MemoryStatus Memory(IHardware? memory) =>
+        new(memory is null ? null : Readings(memory).FirstOrDefault(r => r.Type == SensorType.Load && r.Name == "Memory").Value);
 
     private static ChipStatus Cpu(IHardware cpu)
     {
@@ -74,11 +80,8 @@ public sealed class HardwareReader : IDisposable
         return new ChipStatus(cpu.Name, SensorPick.CpuTemperature(readings), SensorPick.CpuLoad(readings), SensorPick.CpuClock(readings));
     }
 
-    private static ChipStatus Gpu(IHardware gpu)
-    {
-        var readings = Readings(gpu);
-        return new ChipStatus(gpu.Name, SensorPick.GpuTemperature(readings), SensorPick.GpuLoad(readings), SensorPick.GpuClock(readings));
-    }
+    private static ChipStatus Gpu(string name, List<Reading> readings) =>
+        new(name, SensorPick.GpuTemperature(readings), SensorPick.GpuLoad(readings), SensorPick.GpuClock(readings));
 
     // Una entrada por letra de unidad: es como se piensa en un disco desde Windows.
     private List<DiskStatus> Disks()
@@ -103,7 +106,7 @@ public sealed class HardwareReader : IDisposable
     }
 
     // Los ventiladores cuelgan del chip SuperIO de la placa (subhardware) o de controladoras
-    // como las de refrigeración líquida.
+    // como las de refrigeración líquida. Los de las gráficas van aparte, en el marcador GPU.
     private List<Reading> FanReadings()
     {
         var readings = new List<Reading>();
@@ -112,6 +115,7 @@ public sealed class HardwareReader : IDisposable
 
         static void Collect(IHardware hardware, List<Reading> into)
         {
+            if (GpuTypes.Contains(hardware.HardwareType)) return;
             into.AddRange(Readings(hardware).Where(r => r.Type == SensorType.Fan));
             foreach (var sub in hardware.SubHardware) Collect(sub, into);
         }
