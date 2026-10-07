@@ -1,4 +1,5 @@
 # HW Pulse
+<img width="2555" height="796" alt="image" src="https://github.com/user-attachments/assets/2ff39789-228d-42e8-8ca2-5962972bc8bf" />
 
 Full-screen, real-time view of the machine's status (CPU, GPU, RAM, disks and fans) for servers and PCs with an auxiliary display (designed for 1280×400). An alternative to the AIDA64 SensorPanel.
 
