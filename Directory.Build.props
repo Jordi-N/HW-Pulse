@@ -3,6 +3,12 @@
   <!-- Común a todos los proyectos de la solución. -->
   <PropertyGroup>
     <Version>0.1.0</Version>
+    <!-- Metadatos del .exe: SignPath exige nombre de producto y versión en lo que firma. -->
+    <Product>HW Pulse</Product>
+    <Company>Jordi-N</Company>
+    <Copyright>Copyright (c) 2026 Jordi-N. MIT License.</Copyright>
+    <!-- Sin el hash del commit: la versión del .exe es la misma que la del instalador. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>

@@ -62,3 +62,23 @@ dotnet publish src\HwPulse.App\HwPulse.App.csproj -c Release -o publish
 
 - **fans:** sensors sharing a label become one marker showing the average of those spinning, in the order of first appearance. Without `fans`, every spinning sensor is shown under its own name. The GPU fans are always added last as a `GPU` marker.
 - **services:** Windows services to watch. Without `services`, IIS, Jellyfin and every GitHub Actions runner installed are shown, and a runner running a job reads «Ocupado».
+
+## License
+
+[MIT](LICENSE).
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+Only the installer and executables built by the [`Release` workflow](.github/workflows/release.yml) from this repository are signed.
+
+| Role | Members |
+|---|---|
+| Authors | [Jordi-N](https://github.com/Jordi-N) |
+| Reviewers | [Jordi-N](https://github.com/Jordi-N) |
+| Approvers | [Jordi-N](https://github.com/Jordi-N) |
+
+### Privacy
+
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
