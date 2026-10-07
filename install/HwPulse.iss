@@ -84,7 +84,9 @@ end;
 
 // La tarea de inicio, como XML para schtasks: es la única forma de quitarle el límite de 72 horas
 // que Windows pone por defecto. Arranca al iniciar sesión quien instala, con privilegios más altos,
-// así el panel abre sin el aviso de UAC.
+// así el panel abre sin el aviso de UAC. Va en UTF-8 sin BOM ni declaración <?xml?>: schtasks
+// rechaza el BOM («sintaxis de documento no válida») y encoding="UTF-8" («no se pudo cambiar la
+// codificación»), y la tarea quedaba sin crear.
 procedure WriteTaskXml;
 var
   User, App: String;
@@ -94,7 +96,6 @@ begin
   App := XmlEscape(ExpandConstant('{app}'));
   SetArrayLength(Lines, 1);
   Lines[0] :=
-    '<?xml version="1.0" encoding="UTF-8"?>' +
     '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">' +
     '<Triggers><LogonTrigger><Enabled>true</Enabled><UserId>' + User + '</UserId></LogonTrigger></Triggers>' +
     '<Principals><Principal id="Author"><UserId>' + User + '</UserId>' +
@@ -106,5 +107,5 @@ begin
     '<Actions Context="Author"><Exec><Command>"' + App + '\HwPulse.exe"</Command>' +
     '<WorkingDirectory>' + App + '</WorkingDirectory></Exec></Actions>' +
     '</Task>';
-  SaveStringsToUTF8File(ExpandConstant('{tmp}\task.xml'), Lines, False);
+  SaveStringsToUTF8FileWithoutBOM(ExpandConstant('{tmp}\task.xml'), Lines, False);
 end;
