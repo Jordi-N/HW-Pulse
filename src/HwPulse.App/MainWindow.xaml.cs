@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using HwPulse.Sensors;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -21,9 +22,19 @@ public sealed partial class MainWindow : Window
 
     private static readonly string SettingsPath = Path.Combine(AppContext.BaseDirectory, "settings.json");
 
+    // Cada cuánto se comprueba que el panel sigue a pantalla completa en su pantalla, y cuánto
+    // puede tardar una lectura antes de avisar de que los sensores no responden.
+    private static readonly TimeSpan WatchInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan StaleAfter = TimeSpan.FromSeconds(15);
+
     private readonly History ramHistory = new(HistoryLength);
     private readonly History cpuHistory = new(HistoryLength);
     private readonly Task readLoop;
+    private readonly DispatcherQueueTimer watch;
+
+    // La pantalla elegida: se lee de settings.json al arrancar y cambia con el clic derecho.
+    private DisplayCorner? chosenDisplay = SavedDisplay();
+    private DateTime lastRead = DateTime.UtcNow;
 
     // Lo levanta «Salir»: el bucle de lectura termina en su siguiente vuelta y la ventana deja de
     // ocultarse en vez de cerrarse.
@@ -50,6 +61,10 @@ public sealed partial class MainWindow : Window
             HidePanel();
         };
 
+        watch = DispatcherQueue.CreateTimer();
+        watch.Interval = WatchInterval;
+        watch.Tick += (_, _) => Watch();
+
         readLoop = Task.Run(ReadLoopAsync);
     }
 
@@ -61,6 +76,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Show();
         PlaceOnChosenDisplay();
         KeepAwake(true);
+        watch.Start();
     }
 
     public void Shutdown()
@@ -72,6 +88,7 @@ public sealed partial class MainWindow : Window
 
     private void HidePanel()
     {
+        watch.Stop();
         AppWindow.Hide();
         KeepAwake(false);
     }
@@ -85,15 +102,35 @@ public sealed partial class MainWindow : Window
     [LibraryImport("kernel32.dll")]
     private static partial uint SetThreadExecutionState(uint flags);
 
-    private void PlaceOnChosenDisplay()
+    private void PlaceOnChosenDisplay() => MoveTo(ChosenDisplay());
+
+    private DisplayArea ChosenDisplay()
     {
         var displays = Displays();
         var primary = DisplayArea.Primary.DisplayId.Value;
         var index = DisplayPick.Choose(
             displays.Select(d => Corner(d.OuterBounds)).ToList(),
             displays.FindIndex(d => d.DisplayId.Value == primary),
-            SavedDisplay());
-        MoveTo(displays[index]);
+            chosenDisplay);
+        return displays[index];
+    }
+
+    // Un cambio de pantallas (resolución, reconexión, suspensión, escritorio remoto) puede sacar la
+    // ventana de pantalla completa o dejarla con otro tamaño: se recoloca en cuanto se nota. Y si el
+    // bucle de lectura se ha atascado, se avisa en vez de dejar los últimos valores congelados.
+    private void Watch()
+    {
+        var target = ChosenDisplay().OuterBounds;
+        var placed = AppWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen
+            && AppWindow.Position.X == target.X && AppWindow.Position.Y == target.Y
+            && AppWindow.Size.Width == target.Width && AppWindow.Size.Height == target.Height;
+        if (!placed) PlaceOnChosenDisplay();
+
+        var since = DateTime.UtcNow - lastRead;
+        if (!readLoop.IsCompleted && since > StaleAfter)
+        {
+            ShowNotice(InfoBarSeverity.Warning, "Los sensores no responden", $"Última lectura hace {since.TotalSeconds:0} s.");
+        }
     }
 
     // Con settings.json mal escrito se usa la pantalla por defecto: el error ya lo enseña el bucle
@@ -151,6 +188,7 @@ public sealed partial class MainWindow : Window
             };
             item.Click += (_, _) =>
             {
+                chosenDisplay = Corner(bounds);
                 MoveTo(display);
                 SaveDisplay(Corner(bounds));
             };
@@ -176,28 +214,47 @@ public sealed partial class MainWindow : Window
     private void OnEscape(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) => HidePanel();
 
     // En segundo plano: abrir LibreHardwareMonitor tarda segundos y cada lectura, decenas de ms.
-    // Un fallo (settings.json mal escrito, por ejemplo) se enseña en pantalla en vez de perderse.
+    // Un fallo al arrancar (settings.json mal escrito, por ejemplo) se enseña en pantalla en vez de
+    // perderse.
     private async Task ReadLoopAsync()
     {
+        HardwareReader reader;
         try
         {
-            using var reader = new HardwareReader(MonitorSettings.Load(SettingsPath));
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-            do
-            {
-                var snapshot = reader.Read();
-                DispatcherQueue.TryEnqueue(() => Show(snapshot));
-            }
-            while (!exiting && await timer.WaitForNextTickAsync().ConfigureAwait(false));
+            reader = new HardwareReader(MonitorSettings.Load(SettingsPath));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {
             DispatcherQueue.TryEnqueue(() => ShowNotice(InfoBarSeverity.Error, "No se pueden leer los sensores", e.Message));
+            return;
+        }
+
+        using (reader)
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            do ReadOnce(reader);
+            while (!exiting && await timer.WaitForNextTickAsync().ConfigureAwait(false));
+        }
+    }
+
+    // Una lectura que falla (un disco que desaparece, un sensor que deja de responder) no para el
+    // bucle: se avisa y se vuelve a intentar en la siguiente vuelta, que cierra el aviso si va bien.
+    private void ReadOnce(HardwareReader reader)
+    {
+        try
+        {
+            var snapshot = reader.Read();
+            DispatcherQueue.TryEnqueue(() => Show(snapshot));
+        }
+        catch (Exception e)
+        {
+            DispatcherQueue.TryEnqueue(() => ShowNotice(InfoBarSeverity.Error, "Fallo al leer los sensores", $"{e.GetType().Name}: {e.Message}"));
         }
     }
 
     private void Show(Snapshot snapshot)
     {
+        lastRead = DateTime.UtcNow;
         ramHistory.Add(snapshot.Memory.LoadPercent);
         RamGraph.Show(ramHistory.Values);
         RamPercent.Text = Format.Percent(snapshot.Memory.LoadPercent);
