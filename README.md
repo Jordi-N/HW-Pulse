@@ -24,7 +24,7 @@ dotnet test HwPulse.sln
 
 ## Install
 
-Download `HwPulse-Setup-x.y.z.exe` from [Releases](https://github.com/Jordi-N/HW-Pulse/releases/latest) and run it. It installs to `C:\Program Files\HW Pulse`, installs the PawnIO driver if missing and starts the panel at logon with highest privileges, so no UAC prompt. Run a newer setup to update; `settings.json` is kept. Esc hides the panel to the tray icon; click it to show the panel again. Its right-click menu toggles «Iniciar con Windows» and exits. Right-click the panel to choose its screen; the choice is saved in `settings.json`. Until then it opens on the first screen that is not the primary one. The Start menu shortcut opens the panel without a UAC prompt.
+Download `HwPulse-Setup-x.y.z.exe` from [Releases](https://github.com/Jordi-N/HW-Pulse/releases/latest) and run it. It is not code-signed, so SmartScreen may warn: choose «More info» → «Run anyway». It installs to `C:\Program Files\HW Pulse`, installs the PawnIO driver if missing and starts the panel at logon with highest privileges, so no UAC prompt. Run a newer setup to update; `settings.json` is kept. Esc hides the panel to the tray icon; click it to show the panel again. Its right-click menu toggles «Iniciar con Windows» and exits. Right-click the panel to choose its screen; the choice is saved in `settings.json`. Until then it opens on the first screen that is not the primary one. The Start menu shortcut opens the panel without a UAC prompt.
 
 ## Release
 
@@ -69,18 +69,6 @@ dotnet publish src\HwPulse.App\HwPulse.App.csproj -c Release -o publish
 
 [MIT](LICENSE).
 
-## Code signing policy
-
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
-
-Only the installer and executables built by the [`Release` workflow](.github/workflows/release.yml) from this repository are signed.
-
-| Role | Members |
-|---|---|
-| Authors | [Jordi-N](https://github.com/Jordi-N) |
-| Reviewers | [Jordi-N](https://github.com/Jordi-N) |
-| Approvers | [Jordi-N](https://github.com/Jordi-N) |
-
-### Privacy
+## Privacy
 
 This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.

@@ -3,7 +3,7 @@
   <!-- Común a todos los proyectos de la solución. -->
   <PropertyGroup>
     <Version>0.1.0</Version>
-    <!-- Metadatos del .exe: SignPath exige nombre de producto y versión en lo que firma. -->
+    <!-- Metadatos del .exe: nombre de producto, autor y versión en sus propiedades. -->
     <Product>HW Pulse</Product>
     <Company>Jordi-N</Company>
     <Copyright>Copyright (c) 2026 Jordi-N. MIT License.</Copyright>
