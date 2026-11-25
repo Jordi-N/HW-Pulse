@@ -15,7 +15,12 @@ public sealed record Snapshot(
 
 public sealed record MemoryStatus(float? LoadPercent);
 
-public sealed record ChipStatus(string Name, float? TemperatureC, float? LoadPercent, float? ClockMhz);
+public sealed record ChipStatus(string Name, float? TemperatureC, float? LoadPercent, float? ClockMhz)
+{
+    public float? PackageTemperatureC { get; init; }
+    public float? HottestCoreTemperatureC { get; init; }
+    public float? PackagePowerW { get; init; }
+}
 
 public sealed record DiskStatus(string Letter, string Model, bool IsSsd, float? TemperatureC, long UsedBytes, long TotalBytes);
 

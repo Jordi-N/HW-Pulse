@@ -16,6 +16,23 @@ internal static class SensorPick
     public static float? CpuLoad(IReadOnlyList<Reading> readings) =>
         Named(readings, SensorType.Load, "CPU Total");
 
+    public static float? CpuPackageTemperature(IReadOnlyList<Reading> readings) =>
+        Named(readings, SensorType.Temperature, "CPU Package")
+        ?? Named(readings, SensorType.Temperature, "CPU (Tctl/Tdie)");
+
+    public static float? PackagePower(IReadOnlyList<Reading> readings) =>
+        Named(readings, SensorType.Power, "CPU Package");
+
+    public static float? HottestPhysicalCore(IReadOnlyList<Reading> readings) =>
+        readings.Where(r => r.Type == SensorType.Temperature && IsPhysicalCore(r.Name)).Max(r => r.Value);
+
+    private static bool IsPhysicalCore(string name)
+    {
+        var marker = name.IndexOf("Core #", StringComparison.Ordinal);
+        return marker >= 0 && int.TryParse(name.AsSpan(marker + 6), System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out _);
+    }
+
     // Media de los núcleos: «Core #1», y en los híbridos de Intel «P-Core #1» y «E-Core #1».
     public static float? CpuClock(IReadOnlyList<Reading> readings)
     {

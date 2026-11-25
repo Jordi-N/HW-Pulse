@@ -77,7 +77,12 @@ public sealed class HardwareReader : IDisposable
     private static ChipStatus Cpu(IHardware cpu)
     {
         var readings = Readings(cpu);
-        return new ChipStatus(cpu.Name, SensorPick.CpuTemperature(readings), SensorPick.CpuLoad(readings), SensorPick.CpuClock(readings));
+        return new ChipStatus(cpu.Name, SensorPick.CpuTemperature(readings), SensorPick.CpuLoad(readings), SensorPick.CpuClock(readings))
+        {
+            PackageTemperatureC = SensorPick.CpuPackageTemperature(readings),
+            HottestCoreTemperatureC = SensorPick.HottestPhysicalCore(readings),
+            PackagePowerW = SensorPick.PackagePower(readings),
+        };
     }
 
     private static ChipStatus Gpu(string name, List<Reading> readings) =>

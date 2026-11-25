@@ -44,8 +44,9 @@ public partial class App : Application, IDisposable
         };
         tray.ForceCreate();
 
-        window = new MainWindow();
-        window.ShowPanel();
+        var options = Environment.GetCommandLineArgs();
+        window = new MainWindow(options.Contains("--telemetry", StringComparer.OrdinalIgnoreCase));
+        if (!options.Contains("--background", StringComparer.OrdinalIgnoreCase)) window.ShowPanel();
     }
 
     private void ShowPanel() => window?.ShowPanel();

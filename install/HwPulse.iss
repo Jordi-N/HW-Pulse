@@ -38,6 +38,10 @@ WizardStyle=modern
 [Languages]
 Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
 
+[Tasks]
+Name: "background"; Description: "Arrancar en segundo plano, solo en la bandeja"; Flags: unchecked
+Name: "telemetry"; Description: "Guardar telemetría local"; Flags: unchecked
+
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 Source: "PawnIO_setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: not PawnIoInstalled
@@ -89,11 +93,14 @@ end;
 // codificación»), y la tarea quedaba sin crear.
 procedure WriteTaskXml;
 var
-  User, App: String;
+  User, App, Arguments: String;
   Lines: TArrayOfString;
 begin
   User := XmlEscape(GetEnv('USERDOMAIN') + '\' + GetUserNameString);
   App := XmlEscape(ExpandConstant('{app}'));
+  Arguments := '';
+  if WizardIsTaskSelected('background') then Arguments := '--background';
+  if WizardIsTaskSelected('telemetry') then Arguments := Trim(Arguments + ' --telemetry');
   SetArrayLength(Lines, 1);
   Lines[0] :=
     '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">' +
@@ -105,7 +112,14 @@ begin
     '<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>' +
     '<ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Enabled>true</Enabled></Settings>' +
     '<Actions Context="Author"><Exec><Command>"' + App + '\HwPulse.exe"</Command>' +
+    '<Arguments>' + Arguments + '</Arguments>' +
     '<WorkingDirectory>' + App + '</WorkingDirectory></Exec></Actions>' +
     '</Task>';
   SaveStringsToUTF8FileWithoutBOM(ExpandConstant('{tmp}\task.xml'), Lines, False);
 end;
+
+[UninstallDelete]
+Type: files; Name: "{app}\telemetry.jsonl"
+Type: files; Name: "{app}\telemetry.previous.jsonl"
+Type: files; Name: "{app}\processes.jsonl"
+Type: files; Name: "{app}\processes.previous.jsonl"

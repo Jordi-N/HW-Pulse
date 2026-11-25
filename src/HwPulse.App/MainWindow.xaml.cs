@@ -44,7 +44,7 @@ public sealed partial class MainWindow : Window
     private float cpuClockMax;
     private float gpuClockMax;
 
-    public MainWindow()
+    public MainWindow(bool telemetryEnabled)
     {
         InitializeComponent();
         RamGraph.Capacity = HistoryLength;
@@ -65,7 +65,7 @@ public sealed partial class MainWindow : Window
         watch.Interval = WatchInterval;
         watch.Tick += (_, _) => Watch();
 
-        readLoop = Task.Run(ReadLoopAsync);
+        readLoop = Task.Run(() => ReadLoopAsync(telemetryEnabled));
     }
 
     // Al arrancar y al volver desde la bandeja. La pantalla completa se pone con la ventana ya
@@ -216,7 +216,7 @@ public sealed partial class MainWindow : Window
     // En segundo plano: abrir LibreHardwareMonitor tarda segundos y cada lectura, decenas de ms.
     // Un fallo al arrancar (settings.json mal escrito, por ejemplo) se enseña en pantalla en vez de
     // perderse.
-    private async Task ReadLoopAsync()
+    private async Task ReadLoopAsync(bool telemetryEnabled)
     {
         HardwareReader reader;
         try
@@ -231,20 +231,22 @@ public sealed partial class MainWindow : Window
 
         using (reader)
         {
+            var telemetry = telemetryEnabled ? new TelemetryJournal(AppContext.BaseDirectory) : null;
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-            do ReadOnce(reader);
+            do ReadOnce(reader, telemetry);
             while (!exiting && await timer.WaitForNextTickAsync().ConfigureAwait(false));
         }
     }
 
     // Una lectura que falla (un disco que desaparece, un sensor que deja de responder) no para el
     // bucle: se avisa y se vuelve a intentar en la siguiente vuelta, que cierra el aviso si va bien.
-    private void ReadOnce(HardwareReader reader)
+    private void ReadOnce(HardwareReader reader, TelemetryJournal? telemetry)
     {
         try
         {
             var snapshot = reader.Read();
             DispatcherQueue.TryEnqueue(() => Show(snapshot));
+            telemetry?.Publish(snapshot, DateTimeOffset.UtcNow);
         }
         catch (Exception e)
         {
